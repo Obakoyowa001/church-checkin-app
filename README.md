@@ -6,8 +6,10 @@ they're marked present — no typing, no duplicate member records. Checking in
 only ever appends a row to the `Attendance` sheet; the `Members` sheet is
 never modified by the app.
 
-This is the *returning-member* half of check-in. First-time guests still go
-through your existing Google Form.
+The home page (`/`) is a simple chooser: "I've been here before" leads into
+the in-app search-and-check-in flow (`/checkin`); "This is my first time"
+links straight out to your existing Google Form — first-time guests never
+touch the Members/Attendance data at all.
 
 ## How it fits together
 
@@ -86,9 +88,13 @@ cp .env.example .env.local
 | `APPS_SCRIPT_SHARED_SECRET` | The same value you set as `SHARED_SECRET` in Script Properties |
 | `ADMIN_PASSWORD` | A password for `/admin`, shared verbally with whoever needs it |
 | `ADMIN_SESSION_SECRET` | Another random string (`openssl rand -hex 32`), used to sign the admin session cookie |
+| `NEW_MEMBER_FORM_URL` | The public URL of your existing first-time-guest Google Form |
 
-None of these are exposed to the browser — they're only read on the server
-(API routes and middleware).
+None of these are exposed to the browser except `NEW_MEMBER_FORM_URL`, which
+is just a public link — it's read server-side and rendered into the "I've
+been here before" / "This is my first time" chooser on the home page. If you
+leave it unset, the "first time" button falls back to a "please see someone
+at the welcome desk" message instead of a dead link.
 
 ## 4. Run locally
 
@@ -97,7 +103,8 @@ npm install
 npm run dev
 ```
 
-- Check-in page: http://localhost:3000
+- Home (new vs. returning chooser): http://localhost:3000
+- Returning-member check-in: http://localhost:3000/checkin
 - Admin: http://localhost:3000/admin (prompts for `ADMIN_PASSWORD`)
 
 ### Seeding test data
@@ -116,9 +123,9 @@ them into the `Members` sheet starting at row 2.
 
 1. Push this repo to GitHub (or your git host of choice).
 2. In Vercel, **Add New → Project**, import the repo.
-3. Under **Environment Variables**, add the same four variables from step 3
+3. Under **Environment Variables**, add the same variables from step 3
    (`APPS_SCRIPT_URL`, `APPS_SCRIPT_SHARED_SECRET`, `ADMIN_PASSWORD`,
-   `ADMIN_SESSION_SECRET`).
+   `ADMIN_SESSION_SECRET`, `NEW_MEMBER_FORM_URL`).
 4. Deploy. Point the welcome-desk QR code at the deployed URL (the root
    `/`).
 

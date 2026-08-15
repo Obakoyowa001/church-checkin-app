@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { CheckinApiResponse, Member, SearchApiResponse } from '@/lib/types';
 
 type Stage =
@@ -183,7 +184,10 @@ export default function CheckInFlow() {
   return (
     <div className="flex min-h-dvh flex-col px-5 py-8 sm:px-8">
       <div className="mx-auto w-full max-w-md flex-1">
-        <h1 className="text-center text-3xl font-bold text-teal-deep sm:text-4xl">Welcome!</h1>
+        <Link href="/" className="inline-flex items-center gap-1 text-base font-medium text-ink/50">
+          ← Home
+        </Link>
+        <h1 className="mt-4 text-center text-3xl font-bold text-teal-deep sm:text-4xl">Welcome!</h1>
         <p className="mt-2 text-center text-lg text-ink/70">Find your name to check in.</p>
 
         <div className="relative mt-8">
