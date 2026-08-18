@@ -3,8 +3,9 @@
 A mobile-first check-in app for returning members, backed by a Google Sheet.
 Someone scans a QR code at the welcome desk, finds their name, taps it, and
 they're marked present — no typing, no duplicate member records. Checking in
-only ever appends a row to the `Attendance` sheet; the member-list sheet is
-never modified by the app.
+ticks a checkbox in the person's row, under a column for today's date, in
+your existing wide attendance sheet (one row per person, one column per
+service date) — it doesn't append to a separate log.
 
 The home page (`/`) is a simple chooser: "I've been here before" leads into
 the in-app search-and-check-in flow (`/checkin`); "This is my first time"
@@ -24,34 +25,33 @@ secret or the Apps Script URL — those live in server-side env vars only.
 
 ## 1. Set up the Google Sheet
 
-Create one Google Spreadsheet with two tabs (exact names matter):
+This app is built around a **single existing "wide" attendance sheet** —
+not a fresh two-tab setup. Your sheet needs:
 
-**`Guest`** (the returning-member list — the name is just a tab label, not
-a description of who goes in it) — columns, in this order, with a header row:
+- **One tab** holding your member/attendee list. Default expected name is
+  `Guest`; override with a `MEMBERS_SHEET_NAME` Script Property (see step 2)
+  if yours is named something else.
+- **A header row** somewhere in that tab (doesn't have to be row 1) with, at
+  minimum, a column for each person's full name. Set `MEMBERS_HEADER_ROW`
+  (Script Property, defaults to `1`) to the actual row number your headers
+  are on, and `MEMBERS_FULL_NAME_COL` (defaults to `2`, i.e. column B) to
+  whichever column holds full names.
+- **One column per service date**, to the right of the other columns, with
+  the date itself as the column header (a real Date value or a
+  date-parseable string like `08/19/2026`) and a checkbox per person below
+  it. **These date columns must already exist for today and any upcoming
+  dates you plan to check people in on** — the script finds today's column
+  by matching the header row against today's date, but it never creates a
+  new column itself.
 
-| memberId | fullName | phone | email | dateAdded | active |
-|---|---|---|---|---|---|
+There's no separate `Attendance` tab and no `memberId`/`active` columns in
+this model — matching is done by **exact full name** (case-insensitive).
+If two people share an identical name, search will show both, and checking
+in matches whichever row it finds first with that name.
 
-- `memberId` — any unique string (e.g. `M0001`).
-- `active` — `TRUE`/`FALSE`. Inactive members won't show up in search and
-  can't be checked in.
-
-Want to call this tab something other than `Guest`? Rename the tab to
-whatever you like, then set a `MEMBERS_SHEET_NAME` Script Property in Apps
-Script to match (see step 2) — no code changes or redeploy needed, the
-change takes effect immediately.
-
-**`Attendance`** — columns, in this order, with a header row:
-
-| timestamp | memberId | fullName | serviceDate |
-|---|---|---|---|
-
-Leave `Attendance` empty apart from the header — the app appends to it. (This
-tab's name can also be overridden with an `ATTENDANCE_SHEET_NAME` Script
-Property if needed.)
-
-You can populate the member-list tab with your real list now, or first test
-with fake data — see [Seeding test data](#seeding-test-data) below.
+Nothing else about your sheet's other columns (gender, phone, email,
+"how you heard about us," etc.) matters to this script — it only ever reads
+the full-name column and writes to the matched today's-date checkbox.
 
 ## 2. Paste and deploy the Apps Script
 
@@ -67,10 +67,10 @@ with fake data — see [Seeding test data](#seeding-test-data) below.
      openssl rand -hex 32
      ```
    - Save.
-   - **Only if your tabs aren't named `Guest`/`Attendance`**: add
-     `MEMBERS_SHEET_NAME` and/or `ATTENDANCE_SHEET_NAME` Script Properties
-     the same way, set to your actual tab names. Skip this if you're using
-     the defaults.
+   - Add the sheet-layout properties from step 1, the same way, for any
+     that don't match the defaults: `MEMBERS_SHEET_NAME` (default `Guest`),
+     `MEMBERS_HEADER_ROW` (default `1`), `MEMBERS_FULL_NAME_COL` (default
+     `2`). Skip any that already match your sheet.
 4. Deploy it as a web app:
    - **Deploy → New deployment**.
    - Click the gear next to "Select type" and choose **Web app**.
@@ -127,9 +127,11 @@ To try search before importing your real member list:
 npm run seed
 ```
 
-This writes `scripts/output/members-seed.csv` with ~20 fake members (no
-Google credentials required). Open the file, copy the data rows, and paste
-them into your member-list sheet (`Guest` by default) starting at row 2.
+This writes `scripts/output/members-seed.csv` with ~20 fake full names (no
+Google credentials required). Since this app's sheet layout is
+name-column-only (no `memberId`/`phone`/`email`/`active` columns), only the
+`fullName` values from that file are relevant here — paste those names into
+your member-list tab's full-name column, in the rows below your header row.
 
 ## 5. Deploy to Vercel
 
@@ -145,24 +147,31 @@ them into your member-list sheet (`Guest` by default) starting at row 2.
 
 ## Notes
 
-- **Never modifies the member-list sheet.** The `checkin` action only
-  appends to `Attendance`; it never writes to the `Guest` (or renamed)
-  sheet. If a name can't be found, people are told to see someone at the
-  welcome desk rather than being able to create a record themselves.
-- **Duplicate-safe.** `checkin` checks for an existing Attendance row for
-  that `memberId` + today's date before appending, wrapped in
-  `LockService` so two simultaneous taps can't both slip through.
-- **Search stays narrow.** The `search` action only ever returns
-  `memberId` and `fullName`, capped at 8 results — never phone, email, or
-  the full member list.
-- **Search is cached for 15 minutes.** Apps Script caches the active-member
-  list (`CacheService`) so repeated searches don't re-read the whole sheet
-  every keystroke — this is the main lever on search latency, since the
-  network round-trip to Apps Script itself has some inherent, unavoidable
-  delay. The cache is shared across every device hitting the script, not
-  per-user. One consequence: a member added or reactivated mid-service can
-  take up to 15 minutes to start showing up in search — adjust
-  `ACTIVE_MEMBERS_CACHE_TTL_SECONDS` in `Code.gs` if you need it fresher.
+- **Checkin writes into the member-list sheet.** This is a deliberate
+  change from an earlier version of this app, which kept a strictly
+  separate append-only log. `checkin` now ticks one checkbox cell — the
+  matched person's row, under today's date column — and never touches any
+  other person's row or any other column. If a name can't be found, people
+  are told to see someone at the welcome desk rather than being able to
+  create a record themselves.
+- **No per-check-in timestamp.** Because attendance is a checkbox per
+  date rather than an appended log row, there's no way to know what time
+  of day someone checked in — just that they did, for that date. The admin
+  view's "checked in today" list is shown in sheet row order, not
+  chronological order.
+- **Duplicate-safe.** `checkin` checks whether today's checkbox is already
+  ticked before writing, wrapped in `LockService` so two simultaneous taps
+  can't both slip through.
+- **Search stays narrow.** The `search` action only ever returns full
+  names, capped at 8 results — never any other column's data.
+- **Search is cached for 15 minutes.** Apps Script caches the full-name
+  list (`CacheService`) so repeated searches don't re-read the sheet every
+  keystroke — this is the main lever on search latency, since the network
+  round-trip to Apps Script itself has some inherent, unavoidable delay.
+  The cache is shared across every device hitting the script, not
+  per-user. One consequence: a newly added name can take up to 15 minutes
+  to start showing up in search — adjust `ACTIVE_MEMBERS_CACHE_TTL_SECONDS`
+  in `Code.gs` if you need it fresher.
 - **Admin auth** is a single shared password (no user accounts). The
   session cookie is an HMAC of the password, so rotating `ADMIN_PASSWORD`
   or `ADMIN_SESSION_SECRET` immediately invalidates existing sessions.

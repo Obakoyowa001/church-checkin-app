@@ -96,17 +96,23 @@ export default function AdminDashboard() {
             <h2 className="mt-10 text-xl font-semibold text-ink">Checked in today ({checkins.length})</h2>
             <div className="mt-4 space-y-2">
               {checkins.length === 0 && <p className="text-lg text-ink/50">No check-ins yet today.</p>}
-              {checkins.map((c, i) => (
-                <div
-                  key={`${c.fullName}-${c.timestamp}-${i}`}
-                  className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-teal/10"
-                >
-                  <span className="text-lg font-medium text-ink">{c.fullName}</span>
-                  <span className="text-sm text-ink/50">
-                    {new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              ))}
+              {checkins.map((c, i) => {
+                const checkinTime = c.timestamp ? new Date(c.timestamp) : null;
+                const hasValidTime = checkinTime && !isNaN(checkinTime.getTime());
+                return (
+                  <div
+                    key={`${c.fullName}-${i}`}
+                    className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-teal/10"
+                  >
+                    <span className="text-lg font-medium text-ink">{c.fullName}</span>
+                    {hasValidTime && (
+                      <span className="text-sm text-ink/50">
+                        {checkinTime!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
