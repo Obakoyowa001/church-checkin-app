@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ArrowLeft, CaretRight, CheckCircle, MagnifyingGlass } from '@phosphor-icons/react';
+import CheckBadge from '@/components/CheckBadge';
 import type { CheckinApiResponse, Member, SearchApiResponse } from '@/lib/types';
 
 type Stage =
@@ -118,24 +120,23 @@ export default function CheckInFlow() {
   if (stage.name === 'success') {
     const firstName = stage.member.fullName.trim().split(/\s+/)[0];
     return (
-      <FullScreenMessage
-        onDismiss={resetToSearch}
-        icon={
-          <div className="animate-check-pop flex h-28 w-28 items-center justify-center rounded-full bg-teal">
-            <svg viewBox="0 0 24 24" fill="none" className="h-14 w-14 text-cream" aria-hidden="true">
-              <path
-                d="M5 13l4 4L19 7"
-                stroke="currentColor"
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        }
-        heading={stage.alreadyCheckedIn ? "You're already checked in" : `You're checked in, ${firstName}`}
-        subheading={stage.alreadyCheckedIn ? 'Good to see you!' : 'Welcome — glad you’re here.'}
-      />
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-brand-deeper via-brand-deep to-brand-mid px-6 text-center">
+        <CheckBadge size={180} />
+        <h1 className="animate-text-rise mt-8 max-w-sm font-display text-2xl font-semibold leading-tight text-cream sm:max-w-md sm:text-3xl">
+          {stage.alreadyCheckedIn ? "You're already checked in" : `You're checked in, ${firstName}`}
+        </h1>
+        <p className="animate-text-rise mt-2 text-lg text-cream/75" style={{ animationDelay: '0.1s' }}>
+          {stage.alreadyCheckedIn ? 'Good to see you!' : 'Welcome — glad you’re here.'}
+        </p>
+        <button
+          type="button"
+          onClick={resetToSearch}
+          className="animate-text-rise mt-10 min-h-[52px] rounded-2xl bg-cream/15 px-8 text-base font-semibold text-cream transition active:scale-[0.98]"
+          style={{ animationDelay: '0.1s' }}
+        >
+          Done
+        </button>
+      </div>
     );
   }
 
@@ -145,22 +146,23 @@ export default function CheckInFlow() {
     const isChecking = stage.name === 'checking';
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-10">
-        <div className="w-full max-w-md text-center">
-          <p className="text-lg text-ink/70">Is this you?</p>
-          <h1 className="mt-3 text-4xl font-bold leading-tight text-teal-deep sm:text-5xl">{member.fullName}</h1>
+        <div className="w-full max-w-md text-center sm:max-w-lg">
+          <p className="text-lg text-ink/60">Is this you?</p>
+          <h1 className="mt-3 font-display text-3xl font-semibold leading-tight text-brand-deep sm:text-5xl">
+            {member.fullName}
+          </h1>
 
           {checkinError && (
-            <p className="mt-6 rounded-2xl bg-amber/10 px-4 py-3 text-base font-medium text-amber">
-              {checkinError}
-            </p>
+            <p className="mt-6 rounded-2xl bg-accent/10 px-4 py-3 text-base font-medium text-accent">{checkinError}</p>
           )}
 
           <button
             type="button"
             disabled={isChecking}
             onClick={() => confirmCheckin(member)}
-            className="mt-10 min-h-[72px] w-full rounded-2xl bg-teal px-6 text-2xl font-semibold text-cream shadow-lg transition active:scale-[0.98] disabled:opacity-70"
+            className="mt-10 flex min-h-[68px] w-full items-center justify-center gap-2.5 rounded-2xl bg-brand-deep px-6 text-xl font-bold text-cream shadow-lg shadow-brand-deep/30 transition active:scale-[0.98] disabled:opacity-70"
           >
+            <CheckCircle size={22} weight="bold" color="#3D66D6" />
             {isChecking ? 'Checking you in…' : `Yes, that's me${firstName ? `, ${firstName}` : ''}`}
           </button>
 
@@ -168,7 +170,7 @@ export default function CheckInFlow() {
             type="button"
             disabled={isChecking}
             onClick={resetToSearch}
-            className="mt-4 min-h-[56px] w-full rounded-2xl border-2 border-teal/20 px-6 text-lg font-medium text-ink/70 transition active:scale-[0.98] disabled:opacity-50"
+            className="mt-4 min-h-[52px] w-full rounded-2xl border border-brand-deep/15 px-6 text-base font-semibold text-ink/60 transition active:scale-[0.98] disabled:opacity-50"
           >
             Not me — go back
           </button>
@@ -182,15 +184,16 @@ export default function CheckInFlow() {
   const showNoResults = trimmed.length >= 2 && searchState === 'idle' && results.length === 0;
 
   return (
-    <div className="flex min-h-dvh flex-col px-5 py-8 sm:px-8">
-      <div className="mx-auto w-full max-w-md flex-1">
-        <Link href="/" className="inline-flex items-center gap-1 text-base font-medium text-ink/50">
-          ← Home
+    <div className="flex min-h-dvh flex-col px-5 py-7 sm:items-center sm:px-8">
+      <div className="mx-auto w-full max-w-md flex-1 sm:max-w-xl">
+        <Link href="/" className="inline-flex items-center gap-1 text-base font-medium text-ink/45">
+          <ArrowLeft size={16} weight="bold" />
+          Home
         </Link>
-        <h1 className="mt-4 text-center text-3xl font-bold text-teal-deep sm:text-4xl">Welcome!</h1>
-        <p className="mt-2 text-center text-lg text-ink/70">Find your name to check in.</p>
+        <h1 className="mt-4 font-display text-2xl font-semibold text-brand-deep sm:text-4xl">Welcome back!</h1>
+        <p className="mt-1.5 text-base text-ink/55 sm:text-lg">Find your name to check in.</p>
 
-        <div className="relative mt-8">
+        <div className="relative mt-6">
           <input
             ref={inputRef}
             autoFocus
@@ -200,18 +203,16 @@ export default function CheckInFlow() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type the first few letters of your name"
-            className="min-h-[64px] w-full rounded-2xl border-2 border-teal/20 bg-white px-5 text-xl text-ink shadow-sm outline-none placeholder:text-ink/40 focus:border-teal"
+            className="min-h-[60px] w-full rounded-2xl border-2 border-brand/30 bg-white pl-5 pr-12 text-lg text-ink shadow-sm outline-none placeholder:text-ink/35 focus:border-brand"
           />
-          {searchState === 'loading' && (
-            <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2">
-              <Spinner />
-            </div>
-          )}
+          <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+            {searchState === 'loading' ? <Spinner /> : <MagnifyingGlass size={20} color="#3D66D6" />}
+          </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 space-y-2.5">
           {searchState === 'error' && (
-            <p className="rounded-2xl bg-amber/10 px-4 py-4 text-center text-lg font-medium text-amber">
+            <p className="rounded-2xl bg-accent/10 px-4 py-4 text-center text-base font-medium text-accent">
               Search isn&apos;t working right now. Please try again, or see someone at the welcome desk.
             </p>
           )}
@@ -221,16 +222,17 @@ export default function CheckInFlow() {
               key={member.memberId}
               type="button"
               onClick={() => selectMember(member)}
-              className="min-h-[60px] w-full rounded-2xl bg-white px-5 py-4 text-left text-xl font-medium text-ink shadow-sm ring-1 ring-teal/10 transition active:scale-[0.98] active:bg-teal/5"
+              className="flex min-h-[60px] w-full items-center gap-3 rounded-2xl bg-white px-5 py-4 text-left shadow-sm ring-1 ring-brand-deep/10 transition active:scale-[0.98] active:bg-brand-tint"
             >
-              {member.fullName}
+              <span className="text-lg font-semibold text-ink sm:text-xl flex-grow">{member.fullName}</span>
+              <CaretRight size={16} weight="bold" className="flex-shrink-0 opacity-30" />
             </button>
           ))}
 
           {showNoResults && (
-            <div className="rounded-2xl bg-teal/5 px-5 py-6 text-center">
-              <p className="text-lg font-medium text-ink">Can&apos;t find your name?</p>
-              <p className="mt-1 text-lg text-ink/70">Please see someone at the welcome desk.</p>
+            <div className="rounded-2xl bg-brand-tint px-5 py-6 text-center">
+              <p className="text-lg font-semibold text-ink">Can&apos;t find your name?</p>
+              <p className="mt-1 text-base text-ink/60">Please see someone at the welcome desk.</p>
             </div>
           )}
         </div>
@@ -241,36 +243,9 @@ export default function CheckInFlow() {
 
 function Spinner() {
   return (
-    <svg className="h-6 w-6 animate-spin text-teal" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg className="h-5 w-5 animate-spin text-brand" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
-  );
-}
-
-function FullScreenMessage({
-  icon,
-  heading,
-  subheading,
-  onDismiss,
-}: {
-  icon: React.ReactNode;
-  heading: string;
-  subheading: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-teal px-6 text-center">
-      {icon}
-      <h1 className="mt-8 max-w-sm text-3xl font-bold leading-tight text-cream sm:text-4xl">{heading}</h1>
-      <p className="mt-3 text-xl text-cream/85">{subheading}</p>
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="mt-12 min-h-[56px] rounded-2xl bg-cream/15 px-8 text-lg font-medium text-cream transition active:scale-[0.98]"
-      >
-        Done
-      </button>
-    </div>
   );
 }

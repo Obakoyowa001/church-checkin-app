@@ -5,19 +5,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        teal: {
-          DEFAULT: '#0F5D5A',
-          deep: '#0A4644',
-          light: '#12716D',
+        // Brand blue, anchored on the real ChristTribe brand materials
+        // (badge, verse cards, QR flyer) rather than the muted teal in
+        // the standalone logo file.
+        brand: {
+          DEFAULT: '#3D66D6',
+          deep: '#122761',
+          deeper: '#09132E',
+          mid: '#1E3B8D',
+          tint: '#EDF0F7',
         },
-        amber: {
-          DEFAULT: '#C8862B',
+        accent: {
+          DEFAULT: '#E8582C', // warm red-orange, used sparingly
+          gold: '#EFB239',
         },
-        cream: '#FBF7EF',
-        ink: '#1F2A2E',
+        cream: '#FBF8F3',
+        ink: '#1B2A2E',
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'system-ui', 'sans-serif'],
       },
     },
   },

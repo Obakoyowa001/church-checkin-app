@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { CalendarCheck, DownloadSimple, SignOut, UsersThree } from '@phosphor-icons/react';
 import type { StatsApiResponse, TodayCheckin } from '@/lib/types';
 
 const REFRESH_MS = 30_000;
@@ -52,61 +54,77 @@ export default function AdminDashboard() {
   const checkins: TodayCheckin[] = stats?.todayCheckins ?? [];
 
   return (
-    <div className="min-h-dvh px-5 py-8 sm:px-10">
-      <div className="mx-auto max-w-2xl">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-teal-deep">Admin</h1>
-          <button
-            type="button"
-            onClick={logout}
-            className="min-h-[44px] rounded-xl border-2 border-teal/20 px-4 text-base font-medium text-ink/70 active:scale-[0.98]"
-          >
-            Log out
-          </button>
+    <div className="min-h-dvh bg-brand-tint">
+      <div className="flex items-center justify-between bg-brand-deep px-6 py-5 sm:px-10">
+        <div className="flex items-center gap-3">
+          <Image src="/logo-mark.png" alt="ChristTribe" width={28} height={39} className="brightness-0 invert" />
+          <span className="font-display text-lg font-semibold text-cream sm:text-xl">ChristTribe Admin</span>
         </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cream/25 px-3.5 text-sm font-semibold text-cream/85 transition active:scale-[0.98] sm:px-4"
+        >
+          <SignOut size={16} weight="bold" />
+          Log out
+        </button>
+      </div>
 
-        {error && (
-          <p className="mt-6 rounded-2xl bg-amber/10 px-4 py-3 text-base font-medium text-amber">{error}</p>
-        )}
+      <div className="mx-auto max-w-5xl px-5 py-7 sm:px-10">
+        {error && <p className="mb-6 rounded-2xl bg-accent/10 px-4 py-3 text-base font-medium text-accent">{error}</p>}
 
         {loading && !stats ? (
-          <p className="mt-8 text-lg text-ink/60">Loading…</p>
+          <p className="text-lg text-ink/55">Loading…</p>
         ) : (
           <>
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <StatCard label="Checked in today" value={stats?.todayCount ?? 0} accent />
-              <StatCard label="Total members" value={stats?.totalMembers ?? 0} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl bg-brand-deep px-6 py-6 shadow-lg shadow-brand-deep/25 sm:col-span-1">
+                <CalendarCheck size={22} weight="bold" color="#3D66D6" className="mb-2" />
+                <div className="font-display text-4xl font-semibold text-cream">{stats?.todayCount ?? 0}</div>
+                <div className="mt-1 text-sm font-medium text-cream/70">Checked in today</div>
+              </div>
+              <div className="rounded-2xl bg-white px-6 py-6 ring-1 ring-brand-deep/10 sm:col-span-1">
+                <UsersThree size={22} weight="bold" color="#3D66D6" className="mb-2" />
+                <div className="font-display text-4xl font-semibold text-brand-deep">{stats?.totalMembers ?? 0}</div>
+                <div className="mt-1 text-sm font-medium text-ink/55">Total members</div>
+              </div>
+              <div className="flex flex-col justify-center gap-3 rounded-2xl bg-white px-6 py-6 ring-1 ring-brand-deep/10 sm:col-span-1">
+                <a
+                  href="/api/admin/export"
+                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-accent-gold px-4 text-sm font-bold text-ink transition active:scale-[0.98]"
+                >
+                  <DownloadSimple size={18} weight="bold" />
+                  Export CSV
+                </a>
+                {lastUpdated && (
+                  <span className="text-center text-xs text-ink/45">
+                    Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · refreshes
+                    every 30s
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <a
-                href="/api/admin/export"
-                className="min-h-[52px] rounded-2xl bg-teal px-6 text-lg font-semibold leading-[52px] text-cream shadow-sm transition active:scale-[0.98]"
-              >
-                Export attendance CSV
-              </a>
-              {lastUpdated && (
-                <span className="text-sm text-ink/50">
-                  Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · refreshes
-                  every 30s
-                </span>
-              )}
-            </div>
-
-            <h2 className="mt-10 text-xl font-semibold text-ink">Checked in today ({checkins.length})</h2>
-            <div className="mt-4 space-y-2">
-              {checkins.length === 0 && <p className="text-lg text-ink/50">No check-ins yet today.</p>}
+            <h2 className="mt-9 font-display text-xl font-semibold text-brand-deep">
+              Checked in today ({checkins.length})
+            </h2>
+            <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {checkins.length === 0 && <p className="text-lg text-ink/45">No check-ins yet today.</p>}
               {checkins.map((c, i) => {
                 const checkinTime = c.timestamp ? new Date(c.timestamp) : null;
                 const hasValidTime = checkinTime && !isNaN(checkinTime.getTime());
+                const initial = c.fullName.trim().charAt(0).toUpperCase();
                 return (
                   <div
                     key={`${c.fullName}-${i}`}
-                    className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-teal/10"
+                    className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-brand-deep/10"
                   >
-                    <span className="text-lg font-medium text-ink">{c.fullName}</span>
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-tint">
+                      <span className="font-display text-sm font-semibold text-brand-deep">{initial}</span>
+                    </div>
+                    <span className="flex-grow text-base font-semibold text-ink">{c.fullName}</span>
                     {hasValidTime && (
-                      <span className="text-sm text-ink/50">
+                      <span className="text-sm text-ink/40">
                         {checkinTime!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
@@ -117,15 +135,6 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className={`rounded-2xl px-5 py-6 shadow-sm ${accent ? 'bg-teal text-cream' : 'bg-white ring-1 ring-teal/10 text-ink'}`}>
-      <div className="text-4xl font-bold">{value}</div>
-      <div className={`mt-1 text-base ${accent ? 'text-cream/80' : 'text-ink/60'}`}>{label}</div>
     </div>
   );
 }
