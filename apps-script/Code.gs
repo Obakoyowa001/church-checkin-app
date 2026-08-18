@@ -146,6 +146,51 @@ function isActiveValue(v) {
   return s !== 'false' && s !== 'no' && s !== 'inactive' && s !== '0';
 }
 
+var ACTIVE_MEMBERS_CACHE_KEY = 'active_members_v1';
+var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 300; // 5 minutes
+
+/**
+ * Returns [{memberId, fullName}, ...] for active members, backed by
+ * CacheService so repeated searches within ACTIVE_MEMBERS_CACHE_TTL_SECONDS
+ * don't each re-read and re-scan the whole sheet — this is the main lever
+ * on search latency, since the Apps Script network round-trip itself is
+ * a fixed cost we can't avoid. Returns null if the sheet doesn't exist.
+ * A newly-added member can take up to the TTL to show up in search.
+ */
+function getActiveMembersCached() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get(ACTIVE_MEMBERS_CACHE_KEY);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
+  if (!sheet) {
+    return null;
+  }
+
+  var values = sheet.getDataRange().getValues();
+  var members = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var memberId = row[COL_MEMBER_ID];
+    var fullName = row[COL_FULL_NAME];
+    if (!memberId || !fullName) continue;
+    if (!isActiveValue(row[COL_ACTIVE])) continue;
+    members.push({ memberId: String(memberId), fullName: String(fullName) });
+  }
+
+  // CacheService values are capped at 100KB; for very large member lists
+  // this put() could throw, so don't let a cache failure break search.
+  try {
+    cache.put(ACTIVE_MEMBERS_CACHE_KEY, JSON.stringify(members), ACTIVE_MEMBERS_CACHE_TTL_SECONDS);
+  } catch (err) {
+    // Fine to skip caching — search still works, just uncached.
+  }
+
+  return members;
+}
+
 /**
  * search — case-insensitive substring match against fullName.
  * Only ever returns memberId + fullName, max MAX_SEARCH_RESULTS,
@@ -158,23 +203,15 @@ function searchMembers(query) {
     return { success: true, results: [] };
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
-  if (!sheet) {
+  var members = getActiveMembersCached();
+  if (members === null) {
     return { success: false, error: '"' + MEMBERS_SHEET + '" sheet not found.' };
   }
 
-  var values = sheet.getDataRange().getValues();
   var results = [];
-
-  for (var i = 1; i < values.length; i++) {
-    var row = values[i];
-    var memberId = row[COL_MEMBER_ID];
-    var fullName = row[COL_FULL_NAME];
-    if (!memberId || !fullName) continue;
-    if (!isActiveValue(row[COL_ACTIVE])) continue;
-
-    if (String(fullName).toLowerCase().indexOf(q) !== -1) {
-      results.push({ memberId: String(memberId), fullName: String(fullName) });
+  for (var i = 0; i < members.length; i++) {
+    if (members[i].fullName.toLowerCase().indexOf(q) !== -1) {
+      results.push(members[i]);
       if (results.length >= MAX_SEARCH_RESULTS) break;
     }
   }
