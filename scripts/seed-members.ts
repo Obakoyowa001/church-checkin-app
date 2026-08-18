@@ -1,6 +1,7 @@
 /**
- * Generates a CSV of ~20 fake members you can paste into the Members
- * sheet to test search before importing your real list.
+ * Generates a CSV of ~20 fake members you can paste into your
+ * member-list sheet (named "Guest" by default) to test search before
+ * importing your real list.
  *
  * Usage:
  *   npm run seed
@@ -8,7 +9,7 @@
  * This does NOT touch your Google Sheet directly (no Google API
  * credentials needed). It writes scripts/output/members-seed.csv —
  * open it, copy the rows (without the header, unless your sheet is
- * empty), and paste them into the Members tab starting at row 2.
+ * empty), and paste them into your member-list tab starting at row 2.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -75,7 +76,7 @@ function main() {
   writeFileSync(outPath, lines.join('\n') + '\n', 'utf8');
 
   console.log(`Wrote ${rows.length} fake members to ${outPath}`);
-  console.log('Open it, copy the data rows, and paste them into the Members sheet starting at row 2.');
+  console.log('Open it, copy the data rows, and paste them into your member-list sheet starting at row 2.');
 }
 
 main();

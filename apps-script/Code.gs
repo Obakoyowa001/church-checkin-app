@@ -3,8 +3,10 @@
  * ------------------------------------------------------------------
  * DEPLOY INSTRUCTIONS
  *
- * 1. Open your Google Sheet (must contain a "Members" tab and an
- *    "Attendance" tab — see README.md for exact column headers).
+ * 1. Open your Google Sheet (must contain a member-list tab and an
+ *    "Attendance" tab — see README.md for exact column headers). The
+ *    member-list tab is named "Guest" by default (see MEMBERS_SHEET_NAME
+ *    below if you need to call it something else).
  * 2. Extensions → Apps Script.
  * 3. Delete anything in Code.gs and paste this whole file in.
  * 4. Set the shared secret (do NOT hardcode it):
@@ -13,6 +15,11 @@
  *      string (e.g. generate one with `openssl rand -hex 32`).
  *    This same value goes into the Next.js app's APPS_SCRIPT_SHARED_SECRET
  *    env var.
+ * 4b. (Optional) If your member-list or attendance tab is named
+ *      something other than the defaults below, add Script Properties
+ *      MEMBERS_SHEET_NAME and/or ATTENDANCE_SHEET_NAME with the exact
+ *      tab name you're using. This lets you rename tabs later without
+ *      editing or redeploying this file — just update the property.
  * 5. Deploy → New deployment → select type "Web app".
  *      - Execute as: Me
  *      - Who has access: Anyone
@@ -20,7 +27,9 @@
  *    the Next.js app's env vars.
  * 7. Every time you edit this file, you must create a NEW deployment
  *    (or use "Manage deployments" → edit → new version) for the
- *    changes to go live at the same URL.
+ *    changes to go live at the same URL. Script Property changes
+ *    (SHARED_SECRET, MEMBERS_SHEET_NAME, ATTENDANCE_SHEET_NAME) take
+ *    effect immediately without a redeploy.
  *
  * CORS NOTE: Apps Script web apps cannot set arbitrary response
  * headers, so they can't send a real Access-Control-Allow-Origin
@@ -36,11 +45,14 @@
  * ------------------------------------------------------------------
  */
 
-var MEMBERS_SHEET = 'Members';
-var ATTENDANCE_SHEET = 'Attendance';
+// Tab names default to "Guest" and "Attendance" but can be overridden
+// per-deployment via Script Properties (see step 4b above) without
+// touching this file.
+var MEMBERS_SHEET = PropertiesService.getScriptProperties().getProperty('MEMBERS_SHEET_NAME') || 'Guest';
+var ATTENDANCE_SHEET = PropertiesService.getScriptProperties().getProperty('ATTENDANCE_SHEET_NAME') || 'Attendance';
 var MAX_SEARCH_RESULTS = 8;
 
-// Members columns
+// Member-list columns
 var COL_MEMBER_ID = 0;
 var COL_FULL_NAME = 1;
 var COL_PHONE = 2;
@@ -148,7 +160,7 @@ function searchMembers(query) {
 
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
   if (!sheet) {
-    return { success: false, error: 'Members sheet not found.' };
+    return { success: false, error: '"' + MEMBERS_SHEET + '" sheet not found.' };
   }
 
   var values = sheet.getDataRange().getValues();
@@ -173,7 +185,7 @@ function searchMembers(query) {
 /**
  * checkin — appends one Attendance row for memberId, guarded by
  * LockService so two simultaneous taps can't both slip past the
- * "already checked in today" check. Never touches the Members sheet.
+ * "already checked in today" check. Never touches the member-list sheet.
  */
 function checkinMember(memberId) {
   memberId = String(memberId || '').trim();
@@ -193,7 +205,7 @@ function checkinMember(memberId) {
     var membersSheet = ss.getSheetByName(MEMBERS_SHEET);
     var attendanceSheet = ss.getSheetByName(ATTENDANCE_SHEET);
     if (!membersSheet || !attendanceSheet) {
-      return { success: false, error: 'Members or Attendance sheet not found.' };
+      return { success: false, error: '"' + MEMBERS_SHEET + '" or "' + ATTENDANCE_SHEET + '" sheet not found.' };
     }
 
     // Look up the authoritative name server-side rather than trusting the client.
@@ -234,7 +246,7 @@ function getStats() {
   var membersSheet = ss.getSheetByName(MEMBERS_SHEET);
   var attendanceSheet = ss.getSheetByName(ATTENDANCE_SHEET);
   if (!membersSheet || !attendanceSheet) {
-    return { success: false, error: 'Members or Attendance sheet not found.' };
+    return { success: false, error: '"' + MEMBERS_SHEET + '" or "' + ATTENDANCE_SHEET + '" sheet not found.' };
   }
 
   var totalMembers = 0;
@@ -277,7 +289,7 @@ function getStats() {
 function exportAttendance() {
   var attendanceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ATTENDANCE_SHEET);
   if (!attendanceSheet) {
-    return { success: false, error: 'Attendance sheet not found.' };
+    return { success: false, error: '"' + ATTENDANCE_SHEET + '" sheet not found.' };
   }
 
   var values = attendanceSheet.getDataRange().getValues();

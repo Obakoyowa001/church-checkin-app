@@ -3,13 +3,13 @@
 A mobile-first check-in app for returning members, backed by a Google Sheet.
 Someone scans a QR code at the welcome desk, finds their name, taps it, and
 they're marked present — no typing, no duplicate member records. Checking in
-only ever appends a row to the `Attendance` sheet; the `Members` sheet is
+only ever appends a row to the `Attendance` sheet; the member-list sheet is
 never modified by the app.
 
 The home page (`/`) is a simple chooser: "I've been here before" leads into
 the in-app search-and-check-in flow (`/checkin`); "This is my first time"
 links straight out to your existing Google Form — first-time guests never
-touch the Members/Attendance data at all.
+touch the member-list/Attendance data at all.
 
 ## How it fits together
 
@@ -26,7 +26,8 @@ secret or the Apps Script URL — those live in server-side env vars only.
 
 Create one Google Spreadsheet with two tabs (exact names matter):
 
-**`Members`** — columns, in this order, with a header row:
+**`Guest`** (the returning-member list — the name is just a tab label, not
+a description of who goes in it) — columns, in this order, with a header row:
 
 | memberId | fullName | phone | email | dateAdded | active |
 |---|---|---|---|---|---|
@@ -35,15 +36,22 @@ Create one Google Spreadsheet with two tabs (exact names matter):
 - `active` — `TRUE`/`FALSE`. Inactive members won't show up in search and
   can't be checked in.
 
+Want to call this tab something other than `Guest`? Rename the tab to
+whatever you like, then set a `MEMBERS_SHEET_NAME` Script Property in Apps
+Script to match (see step 2) — no code changes or redeploy needed, the
+change takes effect immediately.
+
 **`Attendance`** — columns, in this order, with a header row:
 
 | timestamp | memberId | fullName | serviceDate |
 |---|---|---|---|
 
-Leave `Attendance` empty apart from the header — the app appends to it.
+Leave `Attendance` empty apart from the header — the app appends to it. (This
+tab's name can also be overridden with an `ATTENDANCE_SHEET_NAME` Script
+Property if needed.)
 
-You can populate `Members` with your real list now, or first test with fake
-data — see [Seeding test data](#seeding-test-data) below.
+You can populate the member-list tab with your real list now, or first test
+with fake data — see [Seeding test data](#seeding-test-data) below.
 
 ## 2. Paste and deploy the Apps Script
 
@@ -59,6 +67,10 @@ data — see [Seeding test data](#seeding-test-data) below.
      openssl rand -hex 32
      ```
    - Save.
+   - **Only if your tabs aren't named `Guest`/`Attendance`**: add
+     `MEMBERS_SHEET_NAME` and/or `ATTENDANCE_SHEET_NAME` Script Properties
+     the same way, set to your actual tab names. Skip this if you're using
+     the defaults.
 4. Deploy it as a web app:
    - **Deploy → New deployment**.
    - Click the gear next to "Select type" and choose **Web app**.
@@ -117,7 +129,7 @@ npm run seed
 
 This writes `scripts/output/members-seed.csv` with ~20 fake members (no
 Google credentials required). Open the file, copy the data rows, and paste
-them into the `Members` sheet starting at row 2.
+them into your member-list sheet (`Guest` by default) starting at row 2.
 
 ## 5. Deploy to Vercel
 
@@ -133,10 +145,10 @@ them into the `Members` sheet starting at row 2.
 
 ## Notes
 
-- **Never modifies Members.** The `checkin` action only appends to
-  `Attendance`; it never writes to `Members`. If a name can't be found,
-  people are told to see someone at the welcome desk rather than being able
-  to create a record themselves.
+- **Never modifies the member-list sheet.** The `checkin` action only
+  appends to `Attendance`; it never writes to the `Guest` (or renamed)
+  sheet. If a name can't be found, people are told to see someone at the
+  welcome desk rather than being able to create a record themselves.
 - **Duplicate-safe.** `checkin` checks for an existing Attendance row for
   that `memberId` + today's date before appending, wrapped in
   `LockService` so two simultaneous taps can't both slip through.
