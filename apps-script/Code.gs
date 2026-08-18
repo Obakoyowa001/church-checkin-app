@@ -147,7 +147,7 @@ function isActiveValue(v) {
 }
 
 var ACTIVE_MEMBERS_CACHE_KEY = 'active_members_v1';
-var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 3600; // 1 hour
+var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 900; // 15 minutes
 
 /**
  * Returns [{memberId, fullName}, ...] for active members, backed by

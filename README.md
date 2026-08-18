@@ -155,13 +155,13 @@ them into your member-list sheet (`Guest` by default) starting at row 2.
 - **Search stays narrow.** The `search` action only ever returns
   `memberId` and `fullName`, capped at 8 results — never phone, email, or
   the full member list.
-- **Search is cached for 1 hour.** Apps Script caches the active-member
+- **Search is cached for 15 minutes.** Apps Script caches the active-member
   list (`CacheService`) so repeated searches don't re-read the whole sheet
   every keystroke — this is the main lever on search latency, since the
   network round-trip to Apps Script itself has some inherent, unavoidable
   delay. The cache is shared across every device hitting the script, not
   per-user. One consequence: a member added or reactivated mid-service can
-  take up to an hour to start showing up in search — adjust
+  take up to 15 minutes to start showing up in search — adjust
   `ACTIVE_MEMBERS_CACHE_TTL_SECONDS` in `Code.gs` if you need it fresher.
 - **Admin auth** is a single shared password (no user accounts). The
   session cookie is an HMAC of the password, so rotating `ADMIN_PASSWORD`
