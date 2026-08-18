@@ -8,6 +8,7 @@ import type { CheckinApiResponse, Member, SearchApiResponse } from '@/lib/types'
 
 type Stage =
   | { name: 'search' }
+  | { name: 'confirm'; member: Member }
   | { name: 'confirming'; member: Member; revealed: boolean; alreadyCheckedIn: boolean };
 
 const DEBOUNCE_MS = 300;
@@ -92,7 +93,12 @@ export default function CheckInFlow({ newMemberFormUrl }: { newMemberFormUrl?: s
     };
   }, []);
 
-  const selectMember = async (member: Member) => {
+  const selectMember = (member: Member) => {
+    setCheckinError(null);
+    setStage({ name: 'confirm', member });
+  };
+
+  const confirmCheckin = async (member: Member) => {
     setCheckinError(null);
     setStage({ name: 'confirming', member, revealed: false, alreadyCheckedIn: false });
     const startedAt = Date.now();
@@ -105,7 +111,7 @@ export default function CheckInFlow({ newMemberFormUrl }: { newMemberFormUrl?: s
       const data: CheckinApiResponse = await res.json();
       if (!data.success) {
         setCheckinError(data.error ?? "Something went wrong — please try again, or see someone at the welcome desk.");
-        setStage({ name: 'search' });
+        setStage({ name: 'confirm', member });
         return;
       }
       // Success: let the entrance animation finish landing before revealing
@@ -117,9 +123,50 @@ export default function CheckInFlow({ newMemberFormUrl }: { newMemberFormUrl?: s
       scheduleReset();
     } catch {
       setCheckinError("Couldn't reach the check-in system — please try again, or see someone at the welcome desk.");
-      setStage({ name: 'search' });
+      setStage({ name: 'confirm', member });
     }
   };
+
+  if (stage.name === 'confirm') {
+    const { member } = stage;
+    const firstName = member.fullName.trim().split(/\s+/)[0];
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-sky px-6 py-10">
+        <div className="w-full max-w-sm text-center">
+          <p className="text-[17px] text-ink-muted">Is this you?</p>
+          <h1 className="display mt-3 text-[36px] leading-[0.95] text-navy-800 sm:text-[44px]">{member.fullName}</h1>
+
+          {checkinError && (
+            <p className="mt-6 rounded-md bg-blue-100 px-4 py-3 text-base font-medium text-red-500">{checkinError}</p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => confirmCheckin(member)}
+            className="mt-9 flex min-h-16 w-full items-center justify-center gap-2.5 rounded-full bg-navy-800 px-6 shadow-level1 transition active:scale-[0.98]"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 12.5l5 5L20 6" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-[17px] font-semibold text-white">
+              Yes, that&apos;s me{firstName ? `, ${firstName}` : ''}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCheckinError(null);
+              setStage({ name: 'search' });
+            }}
+            className="mt-3 min-h-14 w-full rounded-full border-[1.5px] border-blue-100 px-6 text-base font-semibold text-ink-muted transition active:scale-[0.98]"
+          >
+            Not me — go back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (stage.name === 'confirming') {
     const firstName = stage.member.fullName.trim().split(/\s+/)[0];
