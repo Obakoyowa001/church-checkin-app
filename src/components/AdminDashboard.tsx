@@ -54,16 +54,16 @@ export default function AdminDashboard() {
   const checkins: TodayCheckin[] = stats?.todayCheckins ?? [];
 
   return (
-    <div className="min-h-dvh bg-brand-tint">
-      <div className="flex items-center justify-between bg-brand-deep px-6 py-5 sm:px-10">
+    <div className="min-h-dvh bg-sky">
+      <div className="flex items-center justify-between bg-navy-800 px-6 py-5 sm:px-10">
         <div className="flex items-center gap-3">
           <Image src="/logo-mark.png" alt="ChristTribe" width={28} height={39} className="brightness-0 invert" />
-          <span className="font-display text-lg font-semibold text-cream sm:text-xl">ChristTribe Admin</span>
+          <span className="display text-lg text-white sm:text-xl">ChristTribe Admin</span>
         </div>
         <button
           type="button"
           onClick={logout}
-          className="flex min-h-[40px] items-center gap-1.5 rounded-xl border border-cream/25 px-3.5 text-sm font-semibold text-cream/85 transition active:scale-[0.98] sm:px-4"
+          className="flex min-h-[40px] items-center gap-1.5 rounded-sm border border-white/25 px-3.5 text-sm font-semibold text-white/[0.85] transition active:scale-[0.98] sm:px-4"
         >
           <SignOut size={16} weight="bold" />
           Log out
@@ -71,33 +71,35 @@ export default function AdminDashboard() {
       </div>
 
       <div className="mx-auto max-w-5xl px-5 py-7 sm:px-10">
-        {error && <p className="mb-6 rounded-2xl bg-accent/10 px-4 py-3 text-base font-medium text-accent">{error}</p>}
+        {error && (
+          <p className="mb-6 rounded-md bg-blue-100 px-4 py-3 text-base font-medium text-red-500">{error}</p>
+        )}
 
         {loading && !stats ? (
-          <p className="text-lg text-ink/55">Loading…</p>
+          <p className="text-lg text-ink-muted">Loading…</p>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl bg-brand-deep px-6 py-6 shadow-lg shadow-brand-deep/25 sm:col-span-1">
-                <CalendarCheck size={22} weight="bold" color="#3D66D6" className="mb-2" />
-                <div className="font-display text-4xl font-semibold text-cream">{stats?.todayCount ?? 0}</div>
-                <div className="mt-1 text-sm font-medium text-cream/70">Checked in today</div>
+              <div className="rounded-md bg-navy-800 px-6 py-6 shadow-level1 sm:col-span-1">
+                <CalendarCheck size={22} weight="bold" color="#80ACF8" className="mb-2" />
+                <div className="display text-4xl text-white">{stats?.todayCount ?? 0}</div>
+                <div className="mt-1 text-sm font-medium text-white/70">Checked in today</div>
               </div>
-              <div className="rounded-2xl bg-white px-6 py-6 ring-1 ring-brand-deep/10 sm:col-span-1">
-                <UsersThree size={22} weight="bold" color="#3D66D6" className="mb-2" />
-                <div className="font-display text-4xl font-semibold text-brand-deep">{stats?.totalMembers ?? 0}</div>
-                <div className="mt-1 text-sm font-medium text-ink/55">Total members</div>
+              <div className="rounded-md bg-white px-6 py-6 ring-1 ring-blue-100 sm:col-span-1">
+                <UsersThree size={22} weight="bold" color="#043280" className="mb-2" />
+                <div className="display text-4xl text-navy-800">{stats?.totalMembers ?? 0}</div>
+                <div className="mt-1 text-sm font-medium text-ink-muted">Total members</div>
               </div>
-              <div className="flex flex-col justify-center gap-3 rounded-2xl bg-white px-6 py-6 ring-1 ring-brand-deep/10 sm:col-span-1">
+              <div className="flex flex-col justify-center gap-3 rounded-md bg-white px-6 py-6 ring-1 ring-blue-100 sm:col-span-1">
                 <a
                   href="/api/admin/export"
-                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-accent-gold px-4 text-sm font-bold text-ink transition active:scale-[0.98]"
+                  className="flex min-h-[48px] items-center justify-center gap-2 rounded-sm bg-navy-800 px-4 text-sm font-bold text-white transition active:scale-[0.98]"
                 >
                   <DownloadSimple size={18} weight="bold" />
                   Export CSV
                 </a>
                 {lastUpdated && (
-                  <span className="text-center text-xs text-ink/45">
+                  <span className="text-center text-xs text-ink-muted">
                     Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · refreshes
                     every 30s
                   </span>
@@ -105,11 +107,11 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <h2 className="mt-9 font-display text-xl font-semibold text-brand-deep">
+            <h2 className="display mt-9 text-xl text-navy-800">
               Checked in today ({checkins.length})
             </h2>
             <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {checkins.length === 0 && <p className="text-lg text-ink/45">No check-ins yet today.</p>}
+              {checkins.length === 0 && <p className="text-lg text-ink-muted">No check-ins yet today.</p>}
               {checkins.map((c, i) => {
                 const checkinTime = c.timestamp ? new Date(c.timestamp) : null;
                 const hasValidTime = checkinTime && !isNaN(checkinTime.getTime());
@@ -117,14 +119,14 @@ export default function AdminDashboard() {
                 return (
                   <div
                     key={`${c.fullName}-${i}`}
-                    className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-brand-deep/10"
+                    className="flex items-center gap-3 rounded-sm bg-white px-4 py-3 shadow-sm ring-1 ring-blue-100"
                   >
-                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-tint">
-                      <span className="font-display text-sm font-semibold text-brand-deep">{initial}</span>
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-[10px] bg-blue-100">
+                      <span className="display text-sm text-navy-800">{initial}</span>
                     </div>
                     <span className="flex-grow text-base font-semibold text-ink">{c.fullName}</span>
                     {hasValidTime && (
-                      <span className="text-sm text-ink/40">
+                      <span className="text-sm text-ink-muted">
                         {checkinTime!.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
