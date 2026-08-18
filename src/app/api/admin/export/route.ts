@@ -9,6 +9,11 @@ function csvEscape(value: string): string {
   return value;
 }
 
+// Apps Script cold starts can be slow; give this function longer than
+// Vercel's default so it isn't killed before our own timeout in
+// appsScript.ts gets a chance to return a friendly error.
+export const maxDuration = 25;
+
 // Auth is enforced by src/middleware.ts for all /api/admin/* routes.
 export async function GET() {
   let data: ExportApiResponse;

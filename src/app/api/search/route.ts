@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { appsScriptGet, AppsScriptError } from '@/lib/appsScript';
 import type { SearchApiResponse } from '@/lib/types';
 
+// Apps Script cold starts can be slow; give this function longer than
+// Vercel's default so it isn't killed before our own timeout in
+// appsScript.ts gets a chance to return a friendly error.
+export const maxDuration = 25;
+
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('q')?.trim() ?? '';
 

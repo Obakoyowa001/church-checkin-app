@@ -8,7 +8,10 @@ import 'server-only';
  * pulled into a client component.
  */
 
-const TIMEOUT_MS = 10_000;
+// Apps Script's first request after a fresh deployment or a period of
+// idleness can be notably slower than a "warm" request — give it real
+// room rather than treating a slow-but-working cold start as an error.
+const TIMEOUT_MS = 20_000;
 
 class AppsScriptError extends Error {}
 
