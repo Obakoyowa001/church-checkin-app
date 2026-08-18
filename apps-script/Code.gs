@@ -155,34 +155,38 @@ function todayString() {
 }
 
 /**
- * True if cellValue (a Date object, or a date-parseable string) falls
- * on the same calendar day as targetDate. Used to locate today's
- * service-date column among the header row's cells.
+ * Formats cellValue (a Date object, or a date-parseable string) as a
+ * 'yyyy-MM-dd' string in the spreadsheet's own timezone
+ * (Session.getScriptTimeZone(), set via File → Settings in the Sheet),
+ * or null if cellValue isn't date-like. Comparing formatted strings
+ * like this — rather than raw Date getters — matters because plain JS
+ * Date getters (getFullYear/getMonth/getDate) resolve in the Apps
+ * Script server's own execution timezone (effectively UTC), not the
+ * spreadsheet's timezone. Near midnight in timezones ahead of UTC
+ * (e.g. WAT, UTC+1), that mismatch reads "today" as still being
+ * yesterday.
  */
-function isSameCalendarDate(cellValue, targetDate) {
-  var cellDate = null;
+function dateCellToYmd(cellValue) {
+  var d = null;
   if (Object.prototype.toString.call(cellValue) === '[object Date]') {
-    cellDate = cellValue;
+    d = cellValue;
   } else if (typeof cellValue === 'string' && cellValue.trim()) {
     var parsed = new Date(cellValue);
     if (!isNaN(parsed.getTime())) {
-      cellDate = parsed;
+      d = parsed;
     }
   }
-  if (!cellDate) return false;
-  return (
-    cellDate.getFullYear() === targetDate.getFullYear() &&
-    cellDate.getMonth() === targetDate.getMonth() &&
-    cellDate.getDate() === targetDate.getDate()
-  );
+  if (!d) return null;
+  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
 }
 
 /** Returns the 0-indexed position of today's date column within
- * headerRowValues, or -1 if no matching column exists. */
+ * headerRowValues, or -1 if no matching column exists. "Today" is
+ * evaluated in the spreadsheet's timezone — see dateCellToYmd. */
 function findTodayColumnIndex(headerRowValues) {
-  var today = new Date();
+  var today = todayString();
   for (var c = 0; c < headerRowValues.length; c++) {
-    if (isSameCalendarDate(headerRowValues[c], today)) {
+    if (dateCellToYmd(headerRowValues[c]) === today) {
       return c;
     }
   }
