@@ -181,23 +181,30 @@ submit, so they never need copying by hand:
    with the right fields, then delete that test row.
 
 From then on, every submission to the guest/first-timer form copies name,
-phone, email, address and "how you heard" straight into the matching
-Guest sheet columns — searchable/check-in-able immediately, no manual
-copying, no waiting out the search cache. It won't create a duplicate row
-for someone who already has one (e.g. a returning member who tapped the
-wrong button), and it ignores submissions to any *other* form linked in
-this spreadsheet (like a Leaders & Stewards form) rather than misreading
-them as guest data.
+gender, phone, email, address and "how you heard" straight into the
+matching Guest sheet columns — searchable/check-in-able immediately, no
+manual copying, no waiting out the search cache. It won't create a
+duplicate row for someone who already has one (e.g. a returning member
+who tapped the wrong button), and it ignores submissions to any *other*
+form linked in this spreadsheet (like a Leaders & Stewards form) rather
+than misreading them as guest data.
 
-**This mapping is wired to the exact column layout of the live sheet as
-of when this was built** — see the doc comment above
+**This mapping is wired to the exact column layout of the live sheet,
+confirmed against a real test submission** — see the doc comment above
 `onNewGuestFormSubmit` in `Code.gs` for the precise column numbers. It's
-matched by column *position*, not by question title (two of this form's
-fields are both titled "Email Address," which makes title matching
-unreliable here) — so if you ever add, remove, or reorder the form's
-questions, update the `MEMBERS_*_COL` Script Properties (or the function
-itself) to match, or the sync will start writing the wrong field into the
-wrong column.
+matched by column *position*, not by question title — so if you ever
+add, remove, or reorder the form's questions, update the `MEMBERS_*_COL`
+Script Properties (or the function itself) to match, or the sync will
+start writing the wrong field into the wrong column. **Always verify a
+mapping change against a real test submission, not just the blank form**
+— the first version of this mapping was built from the form's question
+list alone and turned out to not match the actual response columns.
+
+Note on email: this form doesn't ask for an email address directly — the
+Email column only fills in if "Collect email addresses" is on for the
+form, and it's whichever Google account the submitter is signed into at
+the time, not necessarily an address they typed. Treat it as best-effort
+if guests may submit from a shared or signed-out device.
 
 ---
 

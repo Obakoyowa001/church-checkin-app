@@ -434,23 +434,32 @@ function exportAttendance() {
  * submit, so they're searchable/check-in-able immediately — no one
  * manually copying rows over.
  *
- * Column mapping below is positional, matched against the LIVE sheet as
- * of when this was written:
- *   "Form Responses 4" (the 7-question guest form's response tab):
- *     A Timestamp | B Email Address (auto-collected) | C Full name |
- *     D Email Address (asked) | E Phone Number | F Home Address |
- *     G How you hear about the church?
+ * Column mapping below is positional, confirmed against a REAL test
+ * submission on the live sheet (not just the blank form definition):
+ *   "Form Responses 4" (the guest form's response tab):
+ *     A Timestamp | B Email Address (auto-collected — the submitter's own
+ *     Google account email, NOT a typed answer; see note below) |
+ *     C Full name | D Phone Number | E Home Address |
+ *     F How you hear about the church? | G Gender
  *   "Guest" sheet, row MEMBERS_HEADER_ROW header:
- *     Full Name → col MEMBERS_FULL_NAME_COL (B) | Phone → col
- *     MEMBERS_PHONE_COL (G) | Email → col MEMBERS_EMAIL_COL (H) |
- *     Address → col MEMBERS_ADDRESS_COL (I) | How-heard → col
- *     MEMBERS_HOW_HEARD_COL (K).
+ *     Full Name → col MEMBERS_FULL_NAME_COL (B) | Gender → col
+ *     MEMBERS_GENDER_COL (C) | Phone → col MEMBERS_PHONE_COL (G) |
+ *     Email → col MEMBERS_EMAIL_COL (H) | Address → col
+ *     MEMBERS_ADDRESS_COL (I) | How-heard → col MEMBERS_HOW_HEARD_COL (K).
  * If you ever edit the form's questions (add/remove/reorder), the
  * response tab's columns shift with them and this mapping must be
  * updated to match — it does NOT read questions by title, only by
- * position, precisely because two of this form's questions are both
- * titled "Email Address" (the auto-collected one and the asked one),
- * which makes title-based matching unreliable here.
+ * position. (An earlier version of this comment assumed a second,
+ * explicitly-asked "Email Address" question that turned out not to
+ * exist on the real form — always confirm against an actual test
+ * submission, not just the blank form, before trusting a mapping.)
+ *
+ * NOTE on email: this form doesn't ask for an email address directly —
+ * column B is only populated if "Collect email addresses" is turned on
+ * for the form, and it's whichever Google account the submitter is
+ * signed into, not necessarily an address they typed. If guests submit
+ * from a shared/unsigned-in device, this column may be blank or wrong;
+ * treat it as best-effort, not a verified contact email.
  *
  * A spreadsheet-level trigger fires on a submission to ANY form linked
  * anywhere in this spreadsheet (e.g. the separate Leaders & Stewards
@@ -467,9 +476,10 @@ function exportAttendance() {
  * than silently reused.
  *
  * SETUP:
- * 1. Make sure the guest/first-timer form (the 7-question one — full
- *    name, email, phone, home address, how you heard) is linked to THIS
- *    spreadsheet: Form → Responses tab → the Sheets icon → this file.
+ * 1. Make sure the guest/first-timer form (full name, phone, home
+ *    address, how you heard, gender — plus whatever email Google
+ *    auto-collects) is linked to THIS spreadsheet: Form → Responses tab
+ *    → the Sheets icon → this file.
  * 2. In this Apps Script project, open Triggers (the clock icon in the
  *    left sidebar) → + Add Trigger:
  *      - Function: onNewGuestFormSubmit
@@ -484,6 +494,7 @@ function exportAttendance() {
  */
 var NEW_GUEST_FORM_RESPONSES_SHEET =
   PropertiesService.getScriptProperties().getProperty('NEW_GUEST_FORM_RESPONSES_SHEET') || 'Form Responses 4';
+var MEMBERS_GENDER_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_GENDER_COL')) || 3;
 var MEMBERS_PHONE_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_PHONE_COL')) || 7;
 var MEMBERS_EMAIL_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_EMAIL_COL')) || 8;
 var MEMBERS_ADDRESS_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_ADDRESS_COL')) || 9;
@@ -499,10 +510,11 @@ function onNewGuestFormSubmit(e) {
   var fullName = row[2] ? String(row[2]).trim() : '';
   if (!fullName) return;
 
-  var email = row[3] ? String(row[3]).trim() : '';
-  var phone = row[4] ? String(row[4]).trim() : '';
-  var address = row[5] ? String(row[5]).trim() : '';
-  var howHeard = row[6] ? String(row[6]).trim() : '';
+  var email = row[1] ? String(row[1]).trim() : '';
+  var phone = row[3] ? String(row[3]).trim() : '';
+  var address = row[4] ? String(row[4]).trim() : '';
+  var howHeard = row[5] ? String(row[5]).trim() : '';
+  var gender = row[6] ? String(row[6]).trim() : '';
 
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
   if (!sheet) return;
@@ -518,6 +530,7 @@ function onNewGuestFormSubmit(e) {
 
     var targetRow = firstEmptyGuestRow(sheet);
     sheet.getRange(targetRow, MEMBERS_FULL_NAME_COL).setValue(fullName);
+    if (gender) sheet.getRange(targetRow, MEMBERS_GENDER_COL).setValue(gender);
     if (phone) sheet.getRange(targetRow, MEMBERS_PHONE_COL).setValue(phone);
     if (email) sheet.getRange(targetRow, MEMBERS_EMAIL_COL).setValue(email);
     if (address) sheet.getRange(targetRow, MEMBERS_ADDRESS_COL).setValue(address);
