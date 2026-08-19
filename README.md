@@ -155,15 +155,19 @@ By default, "This is my first time" just sends guests to your Google Form
 and stops there — their response lands in whatever tab Google Forms is
 linked to, separate from the Guest sheet the check-in app searches. That
 means a first-time guest won't show up in search next Sunday until someone
-manually copies their name into the Guest sheet.
+manually copies their details into the Guest sheet.
 
-If you'd rather that happen automatically:
+Google Forms has no way to write directly into an *existing* tab with its
+own columns — it always lands responses in its own linked response tab.
+So the form keeps doing that; a trigger then copies each new guest's
+details across into the Guest sheet's real columns the moment they
+submit, so they never need copying by hand:
 
 1. **Link the form to this spreadsheet**, if you haven't already: open the
    form → **Responses** tab → click the green Sheets icon (or **⋮ → Select
-   response destination**) → choose this spreadsheet (the same one the
-   Guest sheet lives in). Every submission now appends a row to a "Form
-   Responses" tab here.
+   response destination**) → choose this spreadsheet. Every submission now
+   appends a row to that form's own response tab here (e.g. "Form
+   Responses 4").
 2. **Add the sync trigger**: in the same Apps Script project from step 2
    above (`Code.gs` already includes the `onNewGuestFormSubmit` function),
    open **Triggers** (clock icon, left sidebar) → **+ Add Trigger**:
@@ -172,17 +176,28 @@ If you'd rather that happen automatically:
    - Event source: `From spreadsheet`
    - Event type: `On form submit`
    - Save, and authorize it when Google asks.
+3. **Test it once** before trusting it on real guests: submit the form
+   with an obviously fake name, confirm it landed in the right Guest row
+   with the right fields, then delete that test row.
 
-From then on, every form submission copies the guest's name straight into
-the Guest sheet's name column — they're searchable/check-in-able
-immediately, no manual copying, no waiting out the search cache.
+From then on, every submission to the guest/first-timer form copies name,
+phone, email, address and "how you heard" straight into the matching
+Guest sheet columns — searchable/check-in-able immediately, no manual
+copying, no waiting out the search cache. It won't create a duplicate row
+for someone who already has one (e.g. a returning member who tapped the
+wrong button), and it ignores submissions to any *other* form linked in
+this spreadsheet (like a Leaders & Stewards form) rather than misreading
+them as guest data.
 
-This assumes your form has one question with "name" somewhere in its title
-(e.g. "Full Name") holding the guest's whole name. If your form splits
-first/last into separate questions instead, adjust `extractFullName()` in
-`Code.gs` to match. It also won't create a duplicate row for someone who's
-already in the Guest sheet (e.g. a returning member who tapped the wrong
-button).
+**This mapping is wired to the exact column layout of the live sheet as
+of when this was built** — see the doc comment above
+`onNewGuestFormSubmit` in `Code.gs` for the precise column numbers. It's
+matched by column *position*, not by question title (two of this form's
+fields are both titled "Email Address," which makes title matching
+unreliable here) — so if you ever add, remove, or reorder the form's
+questions, update the `MEMBERS_*_COL` Script Properties (or the function
+itself) to match, or the sync will start writing the wrong field into the
+wrong column.
 
 ---
 

@@ -426,40 +426,83 @@ function exportAttendance() {
 /**
  * NEW-GUEST FORM SYNC (optional)
  * ------------------------------------------------------------------
- * If your "This is my first time" button (NEW_MEMBER_FORM_URL) points at
- * a Google Form whose responses are linked into a sheet in THIS SAME
- * spreadsheet (Form → Responses tab → the Sheets icon → pick this
- * spreadsheet), this trigger copies each new guest's name straight into
- * the Guest sheet's name column the moment they submit — so they're
- * searchable/check-in-able immediately, with no one manually copying
- * rows over from the form's response tab.
+ * Google Forms cannot write directly into an existing tab with its own
+ * columns — it always lands responses in its own linked tab. So the form
+ * still writes to its own tab (NEW_GUEST_FORM_RESPONSES_SHEET) exactly as
+ * Google Forms puts it there; this trigger then copies each new guest's
+ * details across into the Guest sheet's real columns the moment they
+ * submit, so they're searchable/check-in-able immediately — no one
+ * manually copying rows over.
  *
- * This is entirely optional. Without it, first-time guests still land in
- * their own "Form Responses" tab exactly as Google Forms puts them there
- * — they just won't show up in in-app search until someone copies their
- * name into the Guest sheet by hand.
+ * Column mapping below is positional, matched against the LIVE sheet as
+ * of when this was written:
+ *   "Form Responses 4" (the 7-question guest form's response tab):
+ *     A Timestamp | B Email Address (auto-collected) | C Full name |
+ *     D Email Address (asked) | E Phone Number | F Home Address |
+ *     G How you hear about the church?
+ *   "Guest" sheet, row MEMBERS_HEADER_ROW header:
+ *     Full Name → col MEMBERS_FULL_NAME_COL (B) | Phone → col
+ *     MEMBERS_PHONE_COL (G) | Email → col MEMBERS_EMAIL_COL (H) |
+ *     Address → col MEMBERS_ADDRESS_COL (I) | How-heard → col
+ *     MEMBERS_HOW_HEARD_COL (K).
+ * If you ever edit the form's questions (add/remove/reorder), the
+ * response tab's columns shift with them and this mapping must be
+ * updated to match — it does NOT read questions by title, only by
+ * position, precisely because two of this form's questions are both
+ * titled "Email Address" (the auto-collected one and the asked one),
+ * which makes title-based matching unreliable here.
+ *
+ * A spreadsheet-level trigger fires on a submission to ANY form linked
+ * anywhere in this spreadsheet (e.g. the separate Leaders & Stewards
+ * form) — not just this one. The first thing this function does is check
+ * the submitted row actually landed in NEW_GUEST_FORM_RESPONSES_SHEET,
+ * and bails out silently otherwise.
+ *
+ * The Guest sheet's S/N column is pre-numbered far past the real data
+ * (rows reserved for future growth) — "the last row with anything in it"
+ * is NOT where new names belong, it's ~1600 rows past the last real
+ * entry. New guests go right after the last row that actually HAS a
+ * name (firstEmptyGuestRow below) — sparse gap rows earlier in the sheet
+ * (an occasional blank name amid real entries) are left alone rather
+ * than silently reused.
  *
  * SETUP:
- * 1. In this Apps Script project, open Triggers (the clock icon in the
- *    left sidebar).
- * 2. + Add Trigger:
+ * 1. Make sure the guest/first-timer form (the 7-question one — full
+ *    name, email, phone, home address, how you heard) is linked to THIS
+ *    spreadsheet: Form → Responses tab → the Sheets icon → this file.
+ * 2. In this Apps Script project, open Triggers (the clock icon in the
+ *    left sidebar) → + Add Trigger:
  *      - Function: onNewGuestFormSubmit
  *      - Deployment: Head
  *      - Event source: From spreadsheet
  *      - Event type: On form submit
  * 3. Save — Google will ask you to authorize the trigger once.
- *
- * This assumes your form has a question whose title contains "name"
- * (case-insensitive) — e.g. "Full Name" — holding the guest's whole
- * name in one answer. If your form splits first/last into separate
- * questions, or the name question's title doesn't contain "name",
- * adjust extractFullName() below to match your form.
+ * 4. Test it with one throwaway submission before trusting it on real
+ *    guests — submit the form with an obviously fake name, confirm it
+ *    lands in the right Guest row with the right fields, then delete
+ *    that test row.
  */
-function onNewGuestFormSubmit(e) {
-  if (!e || !e.namedValues) return;
+var NEW_GUEST_FORM_RESPONSES_SHEET =
+  PropertiesService.getScriptProperties().getProperty('NEW_GUEST_FORM_RESPONSES_SHEET') || 'Form Responses 4';
+var MEMBERS_PHONE_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_PHONE_COL')) || 7;
+var MEMBERS_EMAIL_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_EMAIL_COL')) || 8;
+var MEMBERS_ADDRESS_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_ADDRESS_COL')) || 9;
+var MEMBERS_HOW_HEARD_COL = Number(PropertiesService.getScriptProperties().getProperty('MEMBERS_HOW_HEARD_COL')) || 11;
 
-  var fullName = extractFullName(e.namedValues);
+function onNewGuestFormSubmit(e) {
+  if (!e || !e.range || !e.values) return;
+
+  // Ignore submissions to any other form linked in this spreadsheet.
+  if (e.range.getSheet().getName() !== NEW_GUEST_FORM_RESPONSES_SHEET) return;
+
+  var row = e.values; // 0-indexed: row[0] = column A, row[1] = column B, ...
+  var fullName = row[2] ? String(row[2]).trim() : '';
   if (!fullName) return;
+
+  var email = row[3] ? String(row[3]).trim() : '';
+  var phone = row[4] ? String(row[4]).trim() : '';
+  var address = row[5] ? String(row[5]).trim() : '';
+  var howHeard = row[6] ? String(row[6]).trim() : '';
 
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
   if (!sheet) return;
@@ -473,8 +516,12 @@ function onNewGuestFormSubmit(e) {
     // across two rows in future search results.
     if (nameAlreadyExists(sheet, fullName)) return;
 
-    var newRow = Math.max(sheet.getLastRow() + 1, MEMBERS_HEADER_ROW + 1);
-    sheet.getRange(newRow, MEMBERS_FULL_NAME_COL).setValue(fullName);
+    var targetRow = firstEmptyGuestRow(sheet);
+    sheet.getRange(targetRow, MEMBERS_FULL_NAME_COL).setValue(fullName);
+    if (phone) sheet.getRange(targetRow, MEMBERS_PHONE_COL).setValue(phone);
+    if (email) sheet.getRange(targetRow, MEMBERS_EMAIL_COL).setValue(email);
+    if (address) sheet.getRange(targetRow, MEMBERS_ADDRESS_COL).setValue(address);
+    if (howHeard) sheet.getRange(targetRow, MEMBERS_HOW_HEARD_COL).setValue(howHeard);
 
     // Let the very next search see them, instead of waiting out the
     // 15-minute search cache.
@@ -484,14 +531,24 @@ function onNewGuestFormSubmit(e) {
   }
 }
 
-function extractFullName(namedValues) {
-  for (var key in namedValues) {
-    if (key.toLowerCase().indexOf('name') !== -1) {
-      var value = namedValues[key] && namedValues[key][0];
-      if (value && String(value).trim()) return String(value).trim();
+/**
+ * See the S/N note in the doc comment above — this deliberately finds
+ * the row after the LAST NAMED row, not sheet.getLastRow() (which would
+ * land far past the real data) and not the first blank name from the
+ * top (which would land in an earlier sparse gap row instead).
+ */
+function firstEmptyGuestRow(sheet) {
+  var firstDataRow = MEMBERS_HEADER_ROW + 1;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < firstDataRow) return firstDataRow;
+
+  var nameValues = sheet.getRange(firstDataRow, MEMBERS_FULL_NAME_COL, lastRow - MEMBERS_HEADER_ROW, 1).getValues();
+  for (var i = nameValues.length - 1; i >= 0; i--) {
+    if (nameValues[i][0] && String(nameValues[i][0]).trim()) {
+      return firstDataRow + i + 1;
     }
   }
-  return null;
+  return firstDataRow;
 }
 
 function nameAlreadyExists(sheet, fullName) {
