@@ -422,3 +422,88 @@ function exportAttendance() {
 
   return { success: true, rows: rows };
 }
+
+/**
+ * NEW-GUEST FORM SYNC (optional)
+ * ------------------------------------------------------------------
+ * If your "This is my first time" button (NEW_MEMBER_FORM_URL) points at
+ * a Google Form whose responses are linked into a sheet in THIS SAME
+ * spreadsheet (Form → Responses tab → the Sheets icon → pick this
+ * spreadsheet), this trigger copies each new guest's name straight into
+ * the Guest sheet's name column the moment they submit — so they're
+ * searchable/check-in-able immediately, with no one manually copying
+ * rows over from the form's response tab.
+ *
+ * This is entirely optional. Without it, first-time guests still land in
+ * their own "Form Responses" tab exactly as Google Forms puts them there
+ * — they just won't show up in in-app search until someone copies their
+ * name into the Guest sheet by hand.
+ *
+ * SETUP:
+ * 1. In this Apps Script project, open Triggers (the clock icon in the
+ *    left sidebar).
+ * 2. + Add Trigger:
+ *      - Function: onNewGuestFormSubmit
+ *      - Deployment: Head
+ *      - Event source: From spreadsheet
+ *      - Event type: On form submit
+ * 3. Save — Google will ask you to authorize the trigger once.
+ *
+ * This assumes your form has a question whose title contains "name"
+ * (case-insensitive) — e.g. "Full Name" — holding the guest's whole
+ * name in one answer. If your form splits first/last into separate
+ * questions, or the name question's title doesn't contain "name",
+ * adjust extractFullName() below to match your form.
+ */
+function onNewGuestFormSubmit(e) {
+  if (!e || !e.namedValues) return;
+
+  var fullName = extractFullName(e.namedValues);
+  if (!fullName) return;
+
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
+  if (!sheet) return;
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    // A guest who already exists (re-submitted the form, or is actually
+    // a returning member who used the wrong button) shouldn't get a
+    // second, duplicate row — that would just split their attendance
+    // across two rows in future search results.
+    if (nameAlreadyExists(sheet, fullName)) return;
+
+    var newRow = Math.max(sheet.getLastRow() + 1, MEMBERS_HEADER_ROW + 1);
+    sheet.getRange(newRow, MEMBERS_FULL_NAME_COL).setValue(fullName);
+
+    // Let the very next search see them, instead of waiting out the
+    // 15-minute search cache.
+    CacheService.getScriptCache().remove(ACTIVE_MEMBERS_CACHE_KEY);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function extractFullName(namedValues) {
+  for (var key in namedValues) {
+    if (key.toLowerCase().indexOf('name') !== -1) {
+      var value = namedValues[key] && namedValues[key][0];
+      if (value && String(value).trim()) return String(value).trim();
+    }
+  }
+  return null;
+}
+
+function nameAlreadyExists(sheet, fullName) {
+  var firstDataRow = MEMBERS_HEADER_ROW + 1;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < firstDataRow) return false;
+
+  var nameValues = sheet.getRange(firstDataRow, MEMBERS_FULL_NAME_COL, lastRow - MEMBERS_HEADER_ROW, 1).getValues();
+  var target = fullName.trim().toLowerCase();
+  for (var i = 0; i < nameValues.length; i++) {
+    var value = nameValues[i][0];
+    if (value && String(value).trim().toLowerCase() === target) return true;
+  }
+  return false;
+}

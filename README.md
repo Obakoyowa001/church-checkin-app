@@ -9,8 +9,12 @@ service date) — it doesn't append to a separate log.
 
 The home page (`/`) is a simple chooser: "I've been here before" leads into
 the in-app search-and-check-in flow (`/checkin`); "This is my first time"
-links straight out to your existing Google Form — first-time guests never
-touch the member-list/Attendance data at all.
+links straight out to your existing Google Form. By default, first-time
+guests never touch the member-list/Attendance data at all — their form
+response lands wherever Google Forms puts it. If you want new guests to
+show up in in-app search right away instead, there's an optional sync
+trigger for that — see [Optional: sync new-guest form responses](#optional-sync-new-guest-form-responses-into-the-guest-sheet)
+below.
 
 ## How it fits together
 
@@ -142,6 +146,43 @@ your member-list tab's full-name column, in the rows below your header row.
    `ADMIN_SESSION_SECRET`, `NEW_MEMBER_FORM_URL`).
 4. Deploy. Point the welcome-desk QR code at the deployed URL (the root
    `/`).
+
+---
+
+## Optional: sync new-guest form responses into the Guest sheet
+
+By default, "This is my first time" just sends guests to your Google Form
+and stops there — their response lands in whatever tab Google Forms is
+linked to, separate from the Guest sheet the check-in app searches. That
+means a first-time guest won't show up in search next Sunday until someone
+manually copies their name into the Guest sheet.
+
+If you'd rather that happen automatically:
+
+1. **Link the form to this spreadsheet**, if you haven't already: open the
+   form → **Responses** tab → click the green Sheets icon (or **⋮ → Select
+   response destination**) → choose this spreadsheet (the same one the
+   Guest sheet lives in). Every submission now appends a row to a "Form
+   Responses" tab here.
+2. **Add the sync trigger**: in the same Apps Script project from step 2
+   above (`Code.gs` already includes the `onNewGuestFormSubmit` function),
+   open **Triggers** (clock icon, left sidebar) → **+ Add Trigger**:
+   - Function: `onNewGuestFormSubmit`
+   - Deployment: `Head`
+   - Event source: `From spreadsheet`
+   - Event type: `On form submit`
+   - Save, and authorize it when Google asks.
+
+From then on, every form submission copies the guest's name straight into
+the Guest sheet's name column — they're searchable/check-in-able
+immediately, no manual copying, no waiting out the search cache.
+
+This assumes your form has one question with "name" somewhere in its title
+(e.g. "Full Name") holding the guest's whole name. If your form splits
+first/last into separate questions instead, adjust `extractFullName()` in
+`Code.gs` to match. It also won't create a duplicate row for someone who's
+already in the Guest sheet (e.g. a returning member who tapped the wrong
+button).
 
 ---
 
