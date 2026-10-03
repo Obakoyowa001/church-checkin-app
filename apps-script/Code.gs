@@ -28,6 +28,17 @@
  * under the shared name; this hasn't been built out further since it
  * wasn't flagged as a real concern.
  *
+ * UNITY SUNDAY REGISTRATION CHECK
+ *
+ * Separate from all of the above: the home page's "Unity Sunday" button
+ * leads to a page where people can search whether they've already
+ * registered for the event, by name, against the registration form's
+ * own response sheet (UNITY_SHEET_NAME — a different sheet from
+ * MEMBERS_SHEET, with its own header row and full-name column). This
+ * only ever READS that sheet. Registering is done entirely through the
+ * Google Form itself, which the same page links out to, so there's no
+ * write counterpart here and the Guest sheet is never touched by it.
+ *
  * DEPLOY INSTRUCTIONS
  *
  * 1. Open the Google Sheet this is for.
@@ -45,8 +56,14 @@
  *        aren't on row 1 (e.g. 10).
  *      - MEMBERS_FULL_NAME_COL — the column number (1-indexed) with
  *        full names. Defaults to 2 (column B).
- *    All four can be changed later without editing or redeploying this
- *    file — property changes take effect immediately.
+ *      - UNITY_SHEET_NAME — the Unity Sunday registration tab name.
+ *        Defaults to "UNITY SUNDAY REGISTRATION FORM".
+ *      - UNITY_HEADER_ROW — header row (1-indexed) on that sheet.
+ *        Defaults to 1.
+ *      - UNITY_FULL_NAME_COL — full-name column (1-indexed) on that
+ *        sheet. Defaults to 3 (column C).
+ *    All of these can be changed later without editing or redeploying
+ *    this file — property changes take effect immediately.
  * 5. Deploy → New deployment → select type "Web app".
  *      - Execute as: Me
  *      - Who has access: Anyone
@@ -77,7 +94,14 @@ var MEMBERS_FULL_NAME_COL = Number(PropertiesService.getScriptProperties().getPr
 var MAX_SEARCH_RESULTS = 8;
 
 var ACTIVE_MEMBERS_CACHE_KEY = 'active_members_v2';
-var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 900; // 15 minutes
+var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 900; // 15 minutes — shared by the Guest and Unity Sunday name caches.
+
+// Unity Sunday registration check — read-only, see file header.
+var UNITY_SHEET_NAME =
+  PropertiesService.getScriptProperties().getProperty('UNITY_SHEET_NAME') || 'UNITY SUNDAY REGISTRATION FORM';
+var UNITY_HEADER_ROW = Number(PropertiesService.getScriptProperties().getProperty('UNITY_HEADER_ROW')) || 1;
+var UNITY_FULL_NAME_COL = Number(PropertiesService.getScriptProperties().getProperty('UNITY_FULL_NAME_COL')) || 3;
+var UNITY_NAMES_CACHE_KEY = 'unity_sunday_names_v1';
 
 function doGet(e) {
   return handleRequest(e);
@@ -113,6 +137,8 @@ function handleRequest(e) {
         return jsonOutput(getStats());
       case 'export':
         return jsonOutput(exportAttendance());
+      case 'searchUnity':
+        return jsonOutput(searchUnityRegistrations(data.query || ''));
       default:
         return jsonOutput({ success: false, error: 'Unknown action: ' + data.action });
     }
@@ -194,28 +220,30 @@ function findTodayColumnIndex(headerRowValues) {
 }
 
 /**
- * Reads just the full-name column (cached, since this is what backs
- * every search keystroke) rather than the whole sheet, which can be
- * wide given the accumulated per-Sunday checkbox columns.
+ * Reads just one sheet's full-name column (cached, since this is what
+ * backs every search keystroke) rather than the whole sheet, which can
+ * be wide given the accumulated per-Sunday checkbox columns. Shared by
+ * the Guest-sheet search and the Unity Sunday registration check, which
+ * read two unrelated sheets the same way.
  */
-function getMemberNamesCached() {
+function getCachedFullNameColumn(sheetName, headerRow, fullNameCol, cacheKey) {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get(ACTIVE_MEMBERS_CACHE_KEY);
+  var cached = cache.get(cacheKey);
   if (cached) {
     return JSON.parse(cached);
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(MEMBERS_SHEET);
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
   if (!sheet) {
     return null;
   }
 
-  var firstDataRow = MEMBERS_HEADER_ROW + 1;
+  var firstDataRow = headerRow + 1;
   var lastRow = sheet.getLastRow();
   var names = [];
 
   if (lastRow >= firstDataRow) {
-    var nameValues = sheet.getRange(firstDataRow, MEMBERS_FULL_NAME_COL, lastRow - MEMBERS_HEADER_ROW, 1).getValues();
+    var nameValues = sheet.getRange(firstDataRow, fullNameCol, lastRow - headerRow, 1).getValues();
     for (var i = 0; i < nameValues.length; i++) {
       var fullName = nameValues[i][0];
       if (fullName && String(fullName).trim()) {
@@ -227,12 +255,20 @@ function getMemberNamesCached() {
   // CacheService values are capped at 100KB; don't let a cache failure
   // (e.g. a very large member list) break search — just skip caching.
   try {
-    cache.put(ACTIVE_MEMBERS_CACHE_KEY, JSON.stringify(names), ACTIVE_MEMBERS_CACHE_TTL_SECONDS);
+    cache.put(cacheKey, JSON.stringify(names), ACTIVE_MEMBERS_CACHE_TTL_SECONDS);
   } catch (err) {
     // Skip caching.
   }
 
   return names;
+}
+
+function getMemberNamesCached() {
+  return getCachedFullNameColumn(MEMBERS_SHEET, MEMBERS_HEADER_ROW, MEMBERS_FULL_NAME_COL, ACTIVE_MEMBERS_CACHE_KEY);
+}
+
+function getUnityNamesCached() {
+  return getCachedFullNameColumn(UNITY_SHEET_NAME, UNITY_HEADER_ROW, UNITY_FULL_NAME_COL, UNITY_NAMES_CACHE_KEY);
 }
 
 /**
@@ -250,6 +286,34 @@ function searchMembers(query) {
   var names = getMemberNamesCached();
   if (names === null) {
     return { success: false, error: '"' + MEMBERS_SHEET + '" sheet not found.' };
+  }
+
+  var results = [];
+  for (var i = 0; i < names.length; i++) {
+    if (names[i].toLowerCase().indexOf(q) !== -1) {
+      results.push({ memberId: names[i], fullName: names[i] });
+      if (results.length >= MAX_SEARCH_RESULTS) break;
+    }
+  }
+
+  return { success: true, results: results };
+}
+
+/**
+ * searchUnity — same shape and limits as searchMembers, but reads the
+ * Unity Sunday registration sheet instead, to tell someone whether
+ * they've already registered. Read-only: there's no write counterpart,
+ * since registering happens on the Google Form itself.
+ */
+function searchUnityRegistrations(query) {
+  var q = String(query).trim().toLowerCase();
+  if (!q) {
+    return { success: true, results: [] };
+  }
+
+  var names = getUnityNamesCached();
+  if (names === null) {
+    return { success: false, error: '"' + UNITY_SHEET_NAME + '" sheet not found.' };
   }
 
   var results = [];

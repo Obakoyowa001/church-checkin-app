@@ -54,6 +54,14 @@ export default function Home() {
               <span className="mt-0.5 text-sm leading-tight text-ink-muted">Please see someone at the welcome desk</span>
             </div>
           )}
+
+          <Link
+            href="/unity-sunday"
+            className="fu-4 flex min-h-[64px] flex-col items-center justify-center rounded-full bg-blue-500 px-6 py-3 text-center shadow-level1 transition active:scale-[0.98]"
+          >
+            <span className="text-[17px] font-semibold leading-tight text-white">Unity Sunday</span>
+            <span className="mt-0.5 text-sm leading-tight text-white/[0.72]">Register or check your registration</span>
+          </Link>
         </div>
 
         <p className="fu-4 mt-5 flex-shrink-0 text-center text-sm leading-tight">

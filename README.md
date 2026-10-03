@@ -105,6 +105,7 @@ cp .env.example .env.local
 | `ADMIN_PASSWORD` | A password for `/admin`, shared verbally with whoever needs it |
 | `ADMIN_SESSION_SECRET` | Another random string (`openssl rand -hex 32`), used to sign the admin session cookie |
 | `NEW_MEMBER_FORM_URL` | The public URL of your existing first-time-guest Google Form |
+| `UNITY_SUNDAY_FORM_URL` | The public URL of your Unity Sunday registration Google Form |
 
 None of these are exposed to the browser except `NEW_MEMBER_FORM_URL`, which
 is just a public link — it's read server-side and rendered into the "I've
@@ -121,6 +122,7 @@ npm run dev
 
 - Home (new vs. returning chooser): http://localhost:3000
 - Returning-member check-in: http://localhost:3000/checkin
+- Unity Sunday (check registration / register): http://localhost:3000/unity-sunday
 - Admin: http://localhost:3000/admin (prompts for `ADMIN_PASSWORD`)
 
 ### Seeding test data
