@@ -32,9 +32,33 @@ export default function Home() {
         </div>
 
         <div className="mt-6 flex flex-shrink-0 flex-col gap-3">
+          {/* Glaring Prominent Unity Sunday Special Program Button */}
+          <Link
+            href="/unity-sunday"
+            className="fu-3 group relative flex min-h-[78px] flex-col items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-[#D97706] via-[#FBBF24] to-[#F59E0B] p-[2px] shadow-[0_6px_28px_rgba(245,158,11,0.5)] transition duration-200 active:scale-[0.98] hover:shadow-[0_8px_36px_rgba(245,158,11,0.7)]"
+          >
+            <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-gradient-to-r from-[#071330] via-[#0E2459] to-[#071330] px-6 py-3.5 text-center">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-400" />
+                </span>
+                <span className="text-[19px] font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-yellow-300 to-amber-200 sm:text-[20px] drop-shadow-sm">
+                  Unity Sunday
+                </span>
+                <span className="rounded-full bg-amber-400/25 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 border border-amber-300/40">
+                  Oct 4th
+                </span>
+              </div>
+              <span className="mt-1 text-[13px] font-semibold text-amber-200/90 sm:text-sm">
+                Special Program &bull; Register or Check Your Name &rarr;
+              </span>
+            </div>
+          </Link>
+
           <Link
             href="/checkin"
-            className="fu-3 flex min-h-[64px] flex-col items-center justify-center rounded-full bg-navy-800 px-6 py-3 text-center shadow-level1 transition active:scale-[0.98]"
+            className="fu-4 flex min-h-[64px] flex-col items-center justify-center rounded-full bg-navy-800 px-6 py-3 text-center shadow-level1 transition active:scale-[0.98]"
           >
             <span className="text-[17px] font-semibold leading-tight text-white">I&apos;ve been here before</span>
             <span className="mt-0.5 text-sm leading-tight text-white/[0.72]">Find your name</span>
@@ -54,14 +78,6 @@ export default function Home() {
               <span className="mt-0.5 text-sm leading-tight text-ink-muted">Please see someone at the welcome desk</span>
             </div>
           )}
-
-          <Link
-            href="/unity-sunday"
-            className="fu-4 flex min-h-[64px] flex-col items-center justify-center rounded-full bg-blue-500 px-6 py-3 text-center shadow-level1 transition active:scale-[0.98]"
-          >
-            <span className="text-[17px] font-semibold leading-tight text-white">Unity Sunday</span>
-            <span className="mt-0.5 text-sm leading-tight text-white/[0.72]">Register or check your registration</span>
-          </Link>
         </div>
 
         <p className="fu-4 mt-5 flex-shrink-0 text-center text-sm leading-tight">

@@ -98,10 +98,10 @@ var ACTIVE_MEMBERS_CACHE_TTL_SECONDS = 900; // 15 minutes — shared by the Gues
 
 // Unity Sunday registration check — read-only, see file header.
 var UNITY_SHEET_NAME =
-  PropertiesService.getScriptProperties().getProperty('UNITY_SHEET_NAME') || 'UNITY SUNDAY REGISTRATION FORM';
+  PropertiesService.getScriptProperties().getProperty('UNITY_SHEET_NAME') || 'Unity Sunday Registration';
 var UNITY_HEADER_ROW = Number(PropertiesService.getScriptProperties().getProperty('UNITY_HEADER_ROW')) || 1;
-var UNITY_FULL_NAME_COL = Number(PropertiesService.getScriptProperties().getProperty('UNITY_FULL_NAME_COL')) || 3;
-var UNITY_NAMES_CACHE_KEY = 'unity_sunday_names_v1';
+var UNITY_FULL_NAME_COL = Number(PropertiesService.getScriptProperties().getProperty('UNITY_FULL_NAME_COL')) || 0; // 0 = auto-detect
+var UNITY_NAMES_CACHE_KEY = 'unity_sunday_names_v3';
 
 function doGet(e) {
   return handleRequest(e);
@@ -226,6 +226,30 @@ function findTodayColumnIndex(headerRowValues) {
  * the Guest-sheet search and the Unity Sunday registration check, which
  * read two unrelated sheets the same way.
  */
+function findSheetByNameFuzzy(targetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(targetName);
+  if (sheet) return sheet;
+
+  var allSheets = ss.getSheets();
+  var targetLower = String(targetName).toLowerCase().trim();
+  for (var i = 0; i < allSheets.length; i++) {
+    var nameLower = allSheets[i].getName().toLowerCase().trim();
+    if (nameLower === targetLower) return allSheets[i];
+  }
+
+  // If searching for unity sunday sheet, look for any tab containing "unity"
+  if (targetLower.indexOf('unity') !== -1) {
+    for (var j = 0; j < allSheets.length; j++) {
+      if (allSheets[j].getName().toLowerCase().indexOf('unity') !== -1) {
+        return allSheets[j];
+      }
+    }
+  }
+
+  return null;
+}
+
 function getCachedFullNameColumn(sheetName, headerRow, fullNameCol, cacheKey) {
   var cache = CacheService.getScriptCache();
   var cached = cache.get(cacheKey);
@@ -233,7 +257,7 @@ function getCachedFullNameColumn(sheetName, headerRow, fullNameCol, cacheKey) {
     return JSON.parse(cached);
   }
 
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  var sheet = findSheetByNameFuzzy(sheetName);
   if (!sheet) {
     return null;
   }
@@ -241,6 +265,25 @@ function getCachedFullNameColumn(sheetName, headerRow, fullNameCol, cacheKey) {
   var firstDataRow = headerRow + 1;
   var lastRow = sheet.getLastRow();
   var names = [];
+
+  // Auto-detect full name column if fullNameCol is not explicitly configured
+  if (!fullNameCol || fullNameCol <= 0) {
+    var maxCols = Math.min(sheet.getLastColumn(), 20);
+    if (maxCols > 0) {
+      var headerValues = sheet.getRange(headerRow, 1, 1, maxCols).getValues()[0];
+      for (var c = 0; c < headerValues.length; c++) {
+        var h = String(headerValues[c]).toLowerCase().trim();
+        if (h.indexOf('full name') !== -1 || h.indexOf('name') !== -1) {
+          fullNameCol = c + 1;
+          break;
+        }
+      }
+    }
+    // Fallback if no header matched "name"
+    if (!fullNameCol || fullNameCol <= 0) {
+      fullNameCol = 2; // Column B
+    }
+  }
 
   if (lastRow >= firstDataRow) {
     var nameValues = sheet.getRange(firstDataRow, fullNameCol, lastRow - headerRow, 1).getValues();
